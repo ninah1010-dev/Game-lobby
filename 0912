@@ -1,0 +1,1585 @@
+import React, { useState, useEffect } from 'react';
+import {
+  Users,
+  Eye,
+  Swords,
+  Gamepad2,
+  Axe,
+  Ghost,
+  Shield,
+  Heart,
+  HelpCircle,
+  ShieldCheck,
+  Sword,
+  ShieldOff,
+  Cross,
+  Check,
+  ChevronLeft,
+  Crown,
+  Lock,
+  User,
+  Vote,
+  Trophy,
+  RefreshCcw,
+  BookA,
+  BookText,
+  UserCheck,
+  Zap,
+  ShieldAlert,
+  Frown,
+  Meh,
+  Smile,
+  Circle,
+  X,
+  Plus,
+  Minus,
+  AlertTriangle,
+  ArrowRight,
+  Sparkles,
+  Target,
+  CircleOff,
+  Speaker,
+  Mic,
+  MicOff,
+  Skull
+} from 'lucide-react';
+// The incorrect import for tailwind was removed. The script tag in the HTML wrapper handles styling.
+
+// 共同功能：洗牌陣列
+const shuffleArray = (array) => {
+  for (let i = array.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [array[i], array[j]] = [array[j], array[i]];
+  }
+  return array;
+};
+
+// 所有遊戲資料定義集中於此
+const gameData = {
+  whosTheSpy: {
+    name: '誰是臥底',
+    icon: <Ghost />,
+    roles: [
+      { name: '平民', icon: <User />, code: 'civilian', description: '與其他平民獲得相同詞語。', side: 'good' },
+      { name: '臥底', icon: <Swords />, code: 'spy', description: '獲得與平民不同的詞語。', side: 'evil' },
+      { name: '白板', icon: <CircleOff />, code: 'blank', description: '完全沒有詞語，需透過猜測來隱藏身分。', side: 'neutral' }
+    ],
+    words: [
+      ['牛奶', '羊奶'], ['可口可樂', '百事可樂'], ['筆記本', '記事本'],
+      ['冰淇淋', '雪糕'], ['西瓜', '冬瓜'], ['鉛筆', '原子筆'],
+      ['漢堡', '三明治'], ['麻糬', '湯圓'], ['葡萄柚', '橘子'],
+      ['麵條', '拉麵'], ['太陽', '月亮'], ['手機', '平板電腦'],
+      ['冰箱', '冷氣機'], ['棉花糖', '海綿蛋糕'], ['洗面乳', '沐浴乳'],
+      ['麥克風', '擴音器'], ['鑰匙', '鎖頭'], ['番茄', '草莓']
+    ],
+    playerConfigs: {
+      3: { civilian: 2, spy: 1 },
+      4: { civilian: 3, spy: 1 }, 5: { civilian: 4, spy: 1 },
+      6: { civilian: 4, spy: 1, blank: 1 },
+      7: { civilian: 5, spy: 2 }, 8: { civilian: 6, spy: 2 },
+      9: { civilian: 7, spy: 2 }, 10: { civilian: 8, spy: 2 }
+    }
+  },
+  werewolf: {
+    name: '狼人殺',
+    icon: <Axe />,
+    roles: [
+      { name: '狼人', icon: <Axe />, code: 'werewolf', description: '在夜晚殺害平民。', side: 'evil' },
+      { name: '平民', icon: <User />, code: 'civilian', description: '白天發言並投票找出狼人。', side: 'good' },
+      { name: '預言家', icon: <Eye />, code: 'seer', description: '每晚查驗一人身分。', side: 'good' },
+      { name: '女巫', icon: <Shield />, code: 'witch', description: '有解藥和毒藥各一瓶。', side: 'good' },
+      { name: '獵人', icon: <Cross />, code: 'hunter', description: '死後可以開槍帶走一人。', side: 'good' },
+      { name: '邱比特', icon: <Heart />, code: 'cupid', description: '連結兩人成為情侶。', side: 'good' },
+      { name: '狼王', icon: <Crown />, code: 'wolf_king', description: '死後可以開槍帶走一人。', side: 'evil' },
+      { name: '守衛', icon: <ShieldCheck />, code: 'guardian', description: '每晚可以守護一人。', side: 'good' },
+      { name: '白癡', icon: <ShieldOff />, code: 'idiot', description: '被投票出局後可翻牌免死。', side: 'good' }
+    ],
+    playerConfigs: {
+      6: { werewolf: 2, civilian: 2, seer: 1, witch: 1 },
+      8: { werewolf: 2, civilian: 3, seer: 1, witch: 1, hunter: 1 },
+      9: { werewolf: 3, civilian: 3, seer: 1, witch: 1, hunter: 1 },
+      10: { werewolf: 3, civilian: 3, seer: 1, witch: 1, hunter: 1, cupid: 1 },
+      12: { werewolf: 4, civilian: 4, seer: 1, witch: 1, hunter: 1, cupid: 1, guardian: 1 },
+      14: { werewolf: 4, civilian: 5, seer: 1, witch: 1, hunter: 1, cupid: 1, guardian: 1, idiot: 1 }
+    }
+  },
+  avalon: {
+    name: '阿瓦隆',
+    icon: <Sword />,
+    roles: [
+      { name: '梅林', icon: <Crown />, code: 'merlin', description: '正義方領袖，知道邪惡身分。', side: 'good' },
+      { name: '刺客', icon: <Swords />, code: 'assassin', description: '邪惡方，若正義成功可刺殺梅林。', side: 'evil' },
+      { name: '派西維爾', icon: <Eye />, code: 'percival', description: '知道梅林與莫甘娜身分。', side: 'good' },
+      { name: '莫甘娜', icon: <Ghost />, code: 'morgana', description: '邪惡方，偽裝成梅林。', side: 'evil' },
+      { name: '奧伯倫', icon: <HelpCircle />, code: 'oberon', description: '邪惡方，但不知道邪惡同伴。', side: 'evil' },
+      { name: '莫德雷德', icon: <Lock />, code: 'mordred', description: '邪惡方，梅林無法偵測。', side: 'evil' },
+      { name: '忠臣', icon: <ShieldCheck />, code: 'servant', description: '正義方，忠誠於亞瑟王。', side: 'good' },
+      { name: '爪牙', icon: <Sword />, code: 'minion', description: '邪惡方，忠誠於莫德雷德。', side: 'evil' }
+    ],
+    playerConfigs: {
+      5: { servant: 2, merlin: 1, assassin: 1, morgana: 1 },
+      6: { servant: 2, merlin: 1, percival: 1, assassin: 1, morgana: 1 },
+      7: { servant: 3, merlin: 1, percival: 1, assassin: 1, morgana: 1, oberon: 1 },
+      8: { servant: 3, merlin: 1, percival: 1, assassin: 1, morgana: 1, mordred: 1, minion: 1 },
+      9: { servant: 4, merlin: 1, percival: 1, assassin: 1, morgana: 1, mordred: 1, minion: 1, oberon: 1 },
+      10: { servant: 5, merlin: 1, percival: 1, assassin: 1, morgana: 1, mordred: 1, minion: 1, oberon: 1 }
+    },
+    questSizes: {
+      5: [2, 3, 2, 3, 3],
+      6: [2, 3, 4, 3, 4],
+      7: [2, 3, 3, 4, 4],
+      8: [3, 4, 4, 5, 5],
+      9: [3, 4, 4, 5, 5],
+      10: [3, 4, 4, 5, 5]
+    }
+  }
+};
+
+const getDefaultRoles = (mode, count) => {
+  const config = gameData[mode].playerConfigs[count] || {};
+  return Object.keys(config).map(roleCode => ({
+    code: roleCode,
+    count: config[roleCode]
+  }));
+};
+
+const App = () => {
+  const [currentPage, setCurrentPage] = useState('home');
+  const [gameMode, setGameMode] = useState(null);
+  const [players, setPlayers] = useState([]);
+  const [roleCounts, setRoleCounts] = useState({});
+  const [playerCount, setPlayerCount] = useState(0);
+  const [currentPlayerIndex, setCurrentPlayerIndex] = useState(0);
+  const [revealedPlayers, setRevealedPlayers] = useState(new Set());
+  const [message, setMessage] = useState('');
+  const [isFetchingWords, setIsFetchingWords] = useState(false);
+  const [gameHistory, setGameHistory] = useState([]);
+
+  // Avalon specific states
+  const [avalonState, setAvalonState] = useState({
+    leader: null,
+    currentQuest: 0,
+    team: [],
+    questResults: [],
+    voteCount: 0,
+    currentVotePhase: 'team-selection', // 'team-selection', 'team-voting', 'mission-voting', 'mission-result', 'assassination', 'game-over'
+    questVoteOutcome: null,
+    missionVoteTally: { success: 0, fail: 0 },
+    assassinationTarget: null,
+    failedVotes: 0,
+    questTeams: [],
+    showQuestTeamModal: false,
+    selectedQuestIndex: null
+  });
+
+  // Whos the Spy specific states
+  const [whosTheSpyState, setWhosTheSpyState] = useState({
+    round: 1,
+    turn: 0,
+    descriptions: {},
+    phase: 'describing',
+  });
+
+  // Werewolf specific states
+  const [werewolfState, setWerewolfState] = useState({
+    day: 1,
+    phase: 'night', // 'night', 'night-werewolves', 'night-seer', 'night-witch', 'day-announcement', 'day-discussion', 'day-voting', 'end'
+    killedPlayerId: null,
+    poisonedPlayerId: null,
+    savedPlayerId: null,
+    witchHasAntidote: true,
+    witchHasPoison: true,
+    werewolfTargetId: null,
+    seerTargetId: null,
+    seerResult: null,
+    guardianTargetId: null,
+    killedList: [],
+    playersToVote: []
+  });
+
+  // 從 localStorage 載入遊戲歷史紀錄
+  useEffect(() => {
+    try {
+      const history = JSON.parse(localStorage.getItem('gameHistory')) || [];
+      setGameHistory(history);
+    } catch (e) {
+      console.error("Failed to load game history from localStorage", e);
+    }
+  }, []);
+
+  const showMessageWithTimeout = (msg) => {
+    setMessage(msg);
+    setTimeout(() => setMessage(''), 3000);
+  };
+  
+  const saveGameHistory = (result) => {
+    const newHistory = {
+        gameMode: gameData[gameMode].name,
+        timestamp: new Date().toLocaleString(),
+        players: players.map(p => ({ name: p.name, role: gameData[gameMode].roles.find(r => r.code === p.role)?.name })),
+        result: result
+    };
+    const updatedHistory = [newHistory, ...gameHistory];
+    setGameHistory(updatedHistory);
+    localStorage.setItem('gameHistory', JSON.stringify(updatedHistory));
+  };
+
+
+  const setupGame = (mode) => {
+    setGameMode(mode);
+    const defaultCount = Object.keys(gameData[mode].playerConfigs)[0];
+    setPlayerCount(parseInt(defaultCount));
+    updateRoleCounts(mode, parseInt(defaultCount));
+    setCurrentPage('setup');
+  };
+
+  const updateRoleCounts = (mode, count) => {
+    const roles = getDefaultRoles(mode, count);
+    const newCounts = {};
+    roles.forEach(role => newCounts[role.code] = role.count);
+    setRoleCounts(newCounts);
+  };
+
+  const handleStartGame = () => {
+    const totalPlayers = Object.values(roleCounts).reduce((sum, count) => sum + count, 0);
+    if (totalPlayers === 0 || totalPlayers !== playerCount) {
+      showMessageWithTimeout('總人數與角色數量不符！');
+      return;
+    }
+
+    let rolesToAssign = [];
+    for (const role in roleCounts) {
+      for (let i = 0; i < roleCounts[role]; i++) {
+        rolesToAssign.push(role);
+      }
+    }
+    shuffleArray(rolesToAssign);
+
+    const initialPlayers = Array.from({ length: playerCount }, (_, i) => ({
+      id: i,
+      name: `玩家 ${i + 1}`,
+      role: rolesToAssign[i],
+      revealed: false,
+      word: null,
+      alive: true
+    }));
+
+    if (gameMode === 'whosTheSpy') {
+      const selectedWords = gameData.whosTheSpy.words[Math.floor(Math.random() * gameData.whosTheSpy.words.length)];
+      initialPlayers.forEach(player => {
+        if (player.role === 'spy') {
+          player.word = selectedWords[1];
+        } else if (player.role === 'civilian') {
+          player.word = selectedWords[0];
+        } else if (player.role === 'blank') {
+          player.word = null;
+        }
+      });
+      setWhosTheSpyState({ round: 1, turn: 0, descriptions: {}, phase: 'describing' });
+    }
+
+    if (gameMode === 'avalon') {
+      const initialLeaderIndex = Math.floor(Math.random() * playerCount);
+      setAvalonState({
+        ...avalonState,
+        leader: initialPlayers[initialLeaderIndex].id,
+        currentQuest: 1,
+        currentVotePhase: 'team-selection'
+      });
+    }
+
+    if (gameMode === 'werewolf') {
+      setWerewolfState({
+        day: 1,
+        phase: 'night',
+        killedPlayerId: null,
+        poisonedPlayerId: null,
+        savedPlayerId: null,
+        witchHasAntidote: true,
+        witchHasPoison: true,
+        werewolfTargetId: null,
+        seerTargetId: null,
+        seerResult: null,
+        guardianTargetId: null,
+        killedList: [],
+        playersToVote: []
+      });
+    }
+
+    setPlayers(initialPlayers);
+    setRevealedPlayers(new Set());
+    setCurrentPlayerIndex(0);
+    setCurrentPage('role-reveal');
+  };
+
+  const nextPlayerReveal = () => {
+    if (currentPlayerIndex < players.length - 1) {
+      setCurrentPlayerIndex(prev => prev + 1);
+    } else {
+      setCurrentPage(
+        gameMode === 'avalon' ? 'avalon-gameplay' :
+        gameMode === 'whosTheSpy' ? 'whos-the-spy-gameplay' :
+        'werewolf-gameplay'
+      );
+    }
+  };
+  
+  const getPlayerRoleInfo = (roleCode) => {
+    return gameData[gameMode].roles.find(r => r.code === roleCode);
+  };
+  
+  const endAvalonGame = (result) => {
+      saveGameHistory(result);
+      setCurrentPage('result-screen');
+  };
+
+
+  // --- Avalon Logic ---
+  const togglePlayerSelection = (playerId) => {
+    setAvalonState(prev => {
+      const teamSize = gameData.avalon.questSizes[playerCount][prev.currentQuest - 1];
+      const newTeam = prev.team.includes(playerId)
+        ? prev.team.filter(id => id !== playerId)
+        : [...prev.team, playerId];
+      if (newTeam.length > teamSize) {
+        showMessageWithTimeout(`任務隊伍上限為 ${teamSize} 人`);
+        return prev;
+      }
+      return { ...prev, team: newTeam };
+    });
+  };
+
+  const startAvalonTeamVote = () => {
+    setAvalonState(prev => ({ ...prev, currentVotePhase: 'team-voting', voteTally: { approve: 0, reject: 0 } }));
+    showMessageWithTimeout('領袖已發起團隊投票！');
+  };
+
+  const recordAvalonTeamVote = (outcome) => {
+    setAvalonState(prev => {
+      const newTally = { ...prev.voteTally };
+      newTally[outcome]++;
+      const totalVotes = newTally.approve + newTally.reject;
+      const majority = playerCount / 2;
+      const isMajority = newTally.approve > majority;
+
+      if (totalVotes === playerCount) {
+        if (isMajority) {
+          showMessageWithTimeout('團隊投票通過！準備出發執行任務。');
+          return {
+            ...prev,
+            voteTally: newTally,
+            currentVotePhase: 'mission-voting',
+            failedVotes: 0,
+            questTeams: [...(prev.questTeams || []), { quest: prev.currentQuest, members: prev.team }]
+          };
+        } else {
+          showMessageWithTimeout('團隊投票未通過。更換領袖，重新組隊。');
+          const newLeaderIndex = (players.findIndex(p => p.id === prev.leader) + 1) % playerCount;
+          const newFailedVotes = prev.failedVotes + 1;
+          if (newFailedVotes >= 5) {
+            endAvalonGame('邪惡方獲勝');
+            return {
+              ...prev,
+              currentVotePhase: 'evil-wins',
+              failedVotes: newFailedVotes
+            };
+          }
+          return {
+            ...prev,
+            voteTally: newTally,
+            currentVotePhase: 'team-selection',
+            failedVotes: newFailedVotes,
+            leader: players[newLeaderIndex].id,
+            team: []
+          };
+        }
+      }
+      return { ...prev, voteTally: newTally };
+    });
+  };
+
+  const startAvalonMissionVote = () => {
+    setAvalonState(prev => ({ ...prev, currentVotePhase: 'mission-voting' }));
+  };
+
+  const recordAvalonMissionVote = (outcome) => {
+    setAvalonState(prev => {
+      const newVoteTally = { ...prev.missionVoteTally };
+      if (outcome === 'success') {
+        newVoteTally.success++;
+      } else {
+        newVoteTally.fail++;
+      }
+      if (newVoteTally.success + newVoteTally.fail === prev.team.length) {
+        return {
+          ...prev,
+          missionVoteTally: newVoteTally,
+          currentVotePhase: 'mission-result'
+        };
+      }
+      return { ...prev, missionVoteTally: newVoteTally };
+    });
+  };
+
+  const advanceAvalonQuest = () => {
+    setAvalonState(prev => {
+      const { missionVoteTally, currentQuest } = prev;
+      const failVotesNeeded = (playerCount >= 7 && currentQuest === 4) ? 2 : 1;
+      const isSuccess = missionVoteTally.fail < failVotesNeeded;
+      
+      const newResults = [...prev.questResults, isSuccess ? 'success' : 'fail'];
+      const newLeaderIndex = (players.findIndex(p => p.id === prev.leader) + 1) % playerCount;
+      const goodWins = newResults.filter(r => r === 'success').length === 3;
+      const evilWins = newResults.filter(r => r === 'fail').length === 3;
+
+      let nextState = {
+        ...prev,
+        questResults: newResults,
+        team: [],
+        missionVoteTally: { success: 0, fail: 0 },
+        leader: players[newLeaderIndex].id,
+        currentQuest: prev.currentQuest + 1
+      };
+
+      if (goodWins) {
+        nextState.currentVotePhase = 'assassination';
+      } else if (evilWins) {
+        nextState.currentVotePhase = 'evil-wins';
+      } else {
+        nextState.currentVotePhase = 'team-selection';
+      }
+      return nextState;
+    });
+  };
+
+  const assassinatePlayer = (playerId) => {
+    const targetPlayer = players.find(p => p.id === playerId);
+    let outcomeMessage = '';
+    let finalPhase = '';
+
+    if (targetPlayer.role === 'merlin') {
+      outcomeMessage = '刺客成功刺殺梅林，邪惡方獲勝！';
+      finalPhase = 'evil-wins';
+      endAvalonGame('邪惡方獲勝');
+    } else {
+      outcomeMessage = '刺客刺殺失敗，正義方獲勝！';
+      finalPhase = 'good-wins';
+      endAvalonGame('正義方獲勝');
+    }
+
+    showMessageWithTimeout(outcomeMessage);
+    setAvalonState(prev => ({ ...prev, assassinationTarget: playerId, currentVotePhase: finalPhase }));
+  };
+
+  const showQuestTeamModal = (index) => {
+    setAvalonState(prev => ({ ...prev, showQuestTeamModal: true, selectedQuestIndex: index }));
+  };
+  const hideQuestTeamModal = () => {
+    setAvalonState(prev => ({ ...prev, showQuestTeamModal: false, selectedQuestIndex: null }));
+  };
+
+
+  // --- Who's the Spy Logic ---
+  const startWhosTheSpyTurn = () => {
+    setWhosTheSpyState(prev => ({ ...prev, turn: 0, phase: 'describing' }));
+    setCurrentPage('whos-the-spy-gameplay');
+  };
+
+  const nextWhosTheSpyTurn = () => {
+    setWhosTheSpyState(prev => {
+      const alivePlayers = players.filter(p => p.alive);
+      const nextTurn = prev.turn + 1;
+      if (nextTurn >= alivePlayers.length) {
+        // All players have described, move to vote phase
+        return { ...prev, phase: 'voting' };
+      }
+      return { ...prev, turn: nextTurn };
+    });
+  };
+
+  const recordWhosTheSpyDescription = (playerId, description) => {
+    setWhosTheSpyState(prev => ({
+      ...prev,
+      descriptions: {
+        ...prev.descriptions,
+        [playerId]: description
+      }
+    }));
+  };
+
+  const processWhosTheSpyVote = (votes) => {
+    const voteCounts = {};
+    votes.forEach(playerId => {
+      voteCounts[playerId] = (voteCounts[playerId] || 0) + 1;
+    });
+
+    const maxVotes = Math.max(...Object.values(voteCounts));
+    const playersWithMaxVotes = Object.keys(voteCounts).filter(id => voteCounts[id] === maxVotes);
+
+    if (playersWithMaxVotes.length > 1) {
+      showMessageWithTimeout('投票平手，請再次進行投票！');
+      // Stay in voting phase
+      return;
+    }
+    
+    const eliminatedPlayerId = parseInt(playersWithMaxVotes[0]);
+    const eliminatedPlayer = players.find(p => p.id === eliminatedPlayerId);
+    
+    // Update player state to mark them as not alive
+    setPlayers(prevPlayers => prevPlayers.map(p =>
+      p.id === eliminatedPlayerId ? { ...p, alive: false } : p
+    ));
+
+    showMessageWithTimeout(`玩家 ${eliminatedPlayer.name} 已被淘汰！他的身份是：${gameData.whosTheSpy.roles.find(r => r.code === eliminatedPlayer.role)?.name}`);
+    
+    checkWhosTheSpyWin();
+  };
+
+  const checkWhosTheSpyWin = () => {
+    const alivePlayers = players.filter(p => p.alive);
+    const aliveRoles = alivePlayers.map(p => p.role);
+    const aliveSpies = aliveRoles.filter(role => role === 'spy').length;
+    const aliveBlanks = aliveRoles.filter(role => role === 'blank').length;
+    const totalAlive = alivePlayers.length;
+    
+    let winner = null;
+    let winnerMessage = '';
+
+    const spiesNeededToWin = 1;
+    
+    if (aliveSpies === 0) {
+        winner = '平民';
+        winnerMessage = '恭喜平民方獲勝！';
+    } else if (aliveSpies >= totalAlive - aliveSpies) {
+        winner = '臥底';
+        winnerMessage = '恭喜臥底方獲勝！';
+    } else if (aliveSpies === 0 && aliveBlanks > 0) {
+        winner = '白板';
+        winnerMessage = '白板方獲勝！'
+    }
+
+    if (winner) {
+        showMessageWithTimeout(winnerMessage);
+        saveGameHistory(`${winner} 陣營獲勝`);
+        setCurrentPage('result-screen');
+    } else {
+        // Continue to the next round of descriptions
+        setWhosTheSpyState(prev => ({ ...prev, round: prev.round + 1, turn: 0, descriptions: {}, phase: 'describing' }));
+    }
+  };
+
+
+  // --- Werewolf Logic ---
+  const startWerewolfGame = () => {
+    setWerewolfState({
+        day: 1,
+        phase: 'night',
+        killedPlayerId: null,
+        poisonedPlayerId: null,
+        savedPlayerId: null,
+        witchHasAntidote: true,
+        witchHasPoison: true,
+        werewolfTargetId: null,
+        seerTargetId: null,
+        seerResult: null,
+        guardianTargetId: null,
+        killedList: [],
+        playersToVote: []
+    });
+    setCurrentPage('werewolf-gameplay');
+  };
+
+  const checkWerewolfWin = () => {
+    const alivePlayers = players.filter(p => p.alive);
+    const aliveWolves = alivePlayers.filter(p => p.role === 'werewolf' || p.role === 'wolf_king').length;
+    const aliveGodsAndCivilians = alivePlayers.filter(p => ['seer', 'witch', 'hunter', 'cupid', 'guardian', 'idiot', 'civilian'].includes(p.role)).length;
+    
+    if (aliveWolves === 0) {
+        showMessageWithTimeout('好人陣營獲勝！');
+        saveGameHistory('好人陣營獲勝');
+        setCurrentPage('result-screen');
+        return true;
+    }
+    if (aliveWolves >= aliveGodsAndCivilians) {
+        showMessageWithTimeout('狼人陣營獲勝！');
+        saveGameHistory('狼人陣營獲勝');
+        setCurrentPage('result-screen');
+        return true;
+    }
+    return false;
+  };
+  
+  const endNight = () => {
+    setWerewolfState(prev => {
+        const { werewolfTargetId, savedPlayerId, poisonedPlayerId } = prev;
+        const newKilledList = [];
+        let nightMessage = '';
+        
+        // Handle werewolf kill
+        if (werewolfTargetId && savedPlayerId !== werewolfTargetId) {
+            newKilledList.push(werewolfTargetId);
+            const killedPlayerName = players.find(p => p.id === werewolfTargetId)?.name;
+            nightMessage += `玩家 ${killedPlayerName} 被狼人殺害了！`;
+        }
+        
+        // Handle witch poison
+        if (poisonedPlayerId) {
+            newKilledList.push(poisonedPlayerId);
+            const poisonedPlayerName = players.find(p => p.id === poisonedPlayerId)?.name;
+            if (nightMessage) nightMessage += '此外，';
+            nightMessage += `玩家 ${poisonedPlayerName} 被女巫毒殺了！`;
+        }
+
+        // Handle antidote
+        if (werewolfTargetId && savedPlayerId === werewolfTargetId) {
+            if (nightMessage) nightMessage += '此外，';
+            nightMessage += '狼人攻擊的目標被女巫救活了！';
+        }
+        
+        if (!nightMessage) {
+          nightMessage = '天亮了，昨晚是個平安夜。';
+        }
+
+        const uniqueKilled = [...new Set(newKilledList)];
+        const newPlayers = players.map(p => 
+            uniqueKilled.includes(p.id) ? { ...p, alive: false } : p
+        );
+        
+        setPlayers(newPlayers);
+        showMessageWithTimeout(nightMessage);
+
+        if (checkWerewolfWin()) {
+            return { ...prev, phase: 'end' };
+        }
+        
+        return {
+            ...prev,
+            day: prev.day + 1,
+            phase: 'day-announcement',
+            killedList: uniqueKilled,
+            werewolfTargetId: null,
+            poisonedPlayerId: null,
+            savedPlayerId: null,
+            seerResult: null,
+            guardianTargetId: null
+        };
+    });
+  };
+
+  const handleWerewolfAction = (targetId, role) => {
+    const alivePlayers = players.filter(p => p.alive);
+    switch (role) {
+        case 'werewolf':
+            setWerewolfState(prev => ({ ...prev, werewolfTargetId: targetId, phase: 'night-seer' }));
+            break;
+        case 'seer':
+            const targetRole = players.find(p => p.id === targetId)?.role;
+            const isWolf = ['werewolf', 'wolf_king'].includes(targetRole);
+            const resultMessage = isWolf ? `查驗對象 ${players.find(p => p.id === targetId)?.name} 是狼人。` : `查驗對象 ${players.find(p => p.id === targetId)?.name} 是好人。`;
+            setWerewolfState(prev => ({ ...prev, seerTargetId: targetId, seerResult: resultMessage, phase: 'night-witch' }));
+            break;
+        case 'witch-antidote':
+            setWerewolfState(prev => ({ ...prev, savedPlayerId: prev.werewolfTargetId, witchHasAntidote: false, phase: 'night-end' }));
+            break;
+        case 'witch-poison':
+            setWerewolfState(prev => ({ ...prev, poisonedPlayerId: targetId, witchHasPoison: false, phase: 'night-end' }));
+            break;
+        default:
+            break;
+    }
+  };
+  
+  const startDayDiscussion = () => {
+      setWerewolfState(prev => ({...prev, phase: 'day-discussion'}));
+  };
+
+  const startDayVoting = () => {
+    const alivePlayers = players.filter(p => p.alive);
+    setWerewolfState(prev => ({ ...prev, phase: 'day-voting', playersToVote: alivePlayers.map(p => p.id) }));
+  };
+
+  const processWerewolfVote = (votes) => {
+    const voteCounts = {};
+    votes.forEach(playerId => {
+      voteCounts[playerId] = (voteCounts[playerId] || 0) + 1;
+    });
+
+    const maxVotes = Math.max(...Object.values(voteCounts));
+    const playersWithMaxVotes = Object.keys(voteCounts).filter(id => voteCounts[id] === maxVotes);
+
+    if (playersWithMaxVotes.length > 1) {
+      showMessageWithTimeout('投票平手，請再次進行投票！');
+      return;
+    }
+    
+    const eliminatedPlayerId = parseInt(playersWithMaxVotes[0]);
+    const eliminatedPlayer = players.find(p => p.id === eliminatedPlayerId);
+    
+    // Check for special roles
+    let hunterShotId = null;
+    let wolfKingShotId = null;
+    let idiotSaved = false;
+
+    if (eliminatedPlayer?.role === 'idiot') {
+        idiotSaved = window.confirm(`玩家 ${eliminatedPlayer.name} (白癡) 被投票出局了，是否翻牌免死？`);
+        if (idiotSaved) {
+            showMessageWithTimeout('白癡成功翻牌，免於出局！');
+            setWerewolfState(prev => ({ ...prev, day: prev.day + 1, phase: 'night' }));
+            return;
+        }
+    }
+    
+    if (eliminatedPlayer?.role === 'hunter' || eliminatedPlayer?.role === 'wolf_king') {
+        const targetName = prompt(`玩家 ${eliminatedPlayer.name} (獵人/狼王) 決定開槍，請選擇要帶走的玩家名稱：`);
+        const targetPlayer = players.find(p => p.name === targetName);
+        if (targetPlayer) {
+            if (eliminatedPlayer.role === 'hunter') {
+                hunterShotId = targetPlayer.id;
+            } else {
+                wolfKingShotId = targetPlayer.id;
+            }
+        }
+    }
+    
+    const newPlayers = players.map(p => {
+        let newP = { ...p };
+        if (p.id === eliminatedPlayerId) {
+            newP.alive = false;
+        }
+        if (hunterShotId && p.id === hunterShotId) {
+            newP.alive = false;
+        }
+        if (wolfKingShotId && p.id === wolfKingShotId) {
+            newP.alive = false;
+        }
+        return newP;
+    });
+
+    setPlayers(newPlayers);
+    
+    showMessageWithTimeout(`玩家 ${eliminatedPlayer.name} 被投票出局了。`);
+    if (hunterShotId) {
+        showMessageWithTimeout(`獵人開槍，玩家 ${players.find(p => p.id === hunterShotId)?.name} 也出局了。`);
+    }
+    if (wolfKingShotId) {
+        showMessageWithTimeout(`狼王開槍，玩家 ${players.find(p => p.id === wolfKingShotId)?.name} 也出局了。`);
+    }
+
+    if (checkWerewolfWin()) {
+        return;
+    }
+
+    setWerewolfState(prev => ({ ...prev, day: prev.day + 1, phase: 'night' }));
+  };
+
+  // --- General UI Components ---
+  const Home = () => (
+    <div className="text-center p-4">
+      <h2 className="text-3xl font-bold text-gray-800 mb-6">請選擇遊戲</h2>
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        {Object.keys(gameData).map(mode => (
+          <button
+            key={mode}
+            onClick={() => setupGame(mode)}
+            className="flex flex-col items-center p-6 bg-indigo-500 text-white rounded-3xl shadow-lg transition-transform hover:scale-105"
+          >
+            <span className="mb-2 text-5xl">{gameData[mode].icon}</span>
+            <span className="text-xl font-bold">{gameData[mode].name}</span>
+          </button>
+        ))}
+      </div>
+      <div className="mt-8">
+        <button
+          onClick={() => setCurrentPage('history')}
+          className="w-full py-3 px-6 bg-gray-200 text-gray-800 rounded-full font-bold shadow-md hover:bg-gray-300 transition"
+        >
+          <BookA size={20} className="inline-block mr-2" />
+          遊戲紀錄
+        </button>
+      </div>
+    </div>
+  );
+
+  const Setup = () => (
+    <div className="p-4 space-y-6">
+      <div className="flex items-center justify-between">
+        <button onClick={resetGame} className="text-gray-600 hover:text-gray-800"><ChevronLeft size={32} /></button>
+        <h2 className="text-2xl font-bold text-gray-800">
+          <span className="mr-2">{gameData[gameMode].icon}</span>
+          {gameData[gameMode].name} 設定
+        </h2>
+        <div className="w-8"></div>
+      </div>
+      {gameMode === 'whosTheSpy' && (
+        <button
+          onClick={fetchNewWords}
+          disabled={isFetchingWords}
+          className="w-full py-3 mt-4 bg-purple-500 text-white rounded-xl shadow-lg transition-all hover:bg-purple-600 disabled:bg-gray-400 disabled:cursor-not-allowed"
+        >
+          {isFetchingWords ? (
+            <div className="flex justify-center items-center">
+              <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+              </svg>
+              生成中...
+            </div>
+          ) : (
+            <>
+              <Zap size={20} className="inline-block mr-2" />
+              取得新詞語
+            </>
+          )}
+        </button>
+      )}
+      <div>
+        <label className="block text-lg font-semibold mb-2 text-gray-700">選擇玩家人數</label>
+        <select
+          value={playerCount}
+          onChange={(e) => {
+            const newCount = parseInt(e.target.value);
+            setPlayerCount(newCount);
+            updateRoleCounts(gameMode, newCount);
+          }}
+          className="w-full p-3 rounded-xl border border-gray-300"
+        >
+          {Object.keys(gameData[gameMode].playerConfigs).map(num => (
+            <option key={num} value={num}>{num} 人</option>
+          ))}
+        </select>
+      </div>
+      <div>
+        <label className="block text-lg font-semibold mb-2 text-gray-700">自定義角色</label>
+        <div className="space-y-3">
+          {gameData[gameMode].roles.map(role => (
+            <div key={role.code} className="flex items-center justify-between p-3 bg-gray-100 rounded-xl">
+              <div className="flex items-center">
+                <span className="text-xl mr-2">{role.icon}</span>
+                <span className="font-medium text-gray-700">{role.name}</span>
+              </div>
+              <input
+                type="number"
+                min="0"
+                value={roleCounts[role.code] || 0}
+                onChange={(e) => setRoleCounts(prev => ({ ...prev, [role.code]: parseInt(e.target.value) || 0 }))}
+                className="w-16 text-center border rounded-lg"
+              />
+            </div>
+          ))}
+          <div className="flex items-center justify-between font-bold text-gray-800 mt-4">
+            <span>總人數:</span>
+            <span>{Object.values(roleCounts).reduce((sum, count) => sum + count, 0)} / {playerCount}</span>
+          </div>
+        </div>
+      </div>
+      <button
+        onClick={handleStartGame}
+        className="w-full py-3 mt-6 bg-green-500 text-white rounded-xl shadow-lg transition-all hover:bg-green-600"
+      >
+        開始遊戲
+      </button>
+    </div>
+  );
+
+  const RoleReveal = () => {
+    const player = players[currentPlayerIndex];
+
+    if (!player) {
+      return (
+        <div className="text-center">
+          <p>所有玩家都已查看身份！</p>
+          <button onClick={() => setCurrentPage(
+                gameMode === 'avalon' ? 'avalon-gameplay' :
+                gameMode === 'whosTheSpy' ? 'whos-the-spy-gameplay' :
+                'werewolf-gameplay'
+            )}
+            className="mt-4 w-full py-3 bg-green-500 text-white rounded-xl shadow-lg transition-all hover:bg-green-600">
+            開始遊戲
+          </button>
+        </div>
+      );
+    }
+
+    return (
+      <div className="flex flex-col items-center justify-center p-4">
+        <h2 className="text-2xl font-bold text-gray-800 mb-4">請傳給下一位玩家</h2>
+        <div className="bg-white p-6 rounded-2xl shadow-xl w-full max-w-sm text-center">
+          <p className="text-lg text-gray-600 mb-2">輪到</p>
+          <p className="text-4xl font-bold text-indigo-600">{player.name}</p>
+          <div className="h-64 mt-4 relative">
+            <div
+              className={`relative w-full h-full transform-gpu transition-transform duration-500`}
+              style={{ transformStyle: 'preserve-3d', transform: revealedPlayers.has(player.id) ? 'rotateY(180deg)' : '' }}
+            >
+              {/* Card Front (Face down) */}
+              <div
+                onClick={() => setRevealedPlayers(new Set([player.id]))}
+                className="absolute inset-0 bg-indigo-500 rounded-2xl flex items-center justify-center p-4"
+                style={{ backfaceVisibility: 'hidden' }}>
+                <span className="text-white text-3xl font-bold">點擊查看身份</span>
+              </div>
+              {/* Card Back (Face up) */}
+              <div
+                className="absolute inset-0 bg-white rounded-2xl flex flex-col items-center justify-center p-4"
+                style={{ backfaceVisibility: 'hidden', transform: 'rotateY(180deg)' }}>
+                <div className="text-4xl text-indigo-500">
+                  {gameData[gameMode].roles.find(r => r.code === player.role)?.icon}
+                </div>
+                <h3 className="text-xl font-bold mt-2 text-gray-800">{gameData[gameMode].roles.find(r => r.code === player.role)?.name}</h3>
+                {gameMode === 'whosTheSpy' && (
+                  <p className="text-md mt-2 text-gray-600">
+                    詞語: <span className="font-semibold">{player.word === null ? '無' : player.word}</span>
+                  </p>
+                )}
+                <div className="mt-4 space-y-2">
+                  <p className="text-xs text-gray-500">
+                    {gameData[gameMode].roles.find(r => r.code === player.role)?.description}
+                  </p>
+                  {/* Avalon additional information */}
+                  {gameMode === 'avalon' && (
+                    <div className="text-xs text-center text-gray-500">
+                      {/* Merlin */}
+                      {player.role === 'merlin' && (
+                        <p>邪惡方成員：<br />
+                          {players.filter(p => gameData.avalon.roles.find(r => r.code === p.role)?.side === 'evil' && p.role !== 'mordred').map(p => p.name).join('、')}
+                        </p>
+                      )}
+                      {/* Percival */}
+                      {player.role === 'percival' && (
+                        <p>梅林或莫甘娜：<br />
+                          {players.filter(p => p.role === 'merlin' || p.role === 'morgana').map(p => p.name).join('、')}
+                        </p>
+                      )}
+                      {/* Evil */}
+                      {gameData.avalon.roles.find(r => r.code === p.role)?.side === 'evil' && player.role !== 'oberon' && (
+                        <p>邪惡同伴：<br />
+                          {players.filter(p => p.role !== player.role && gameData.avalon.roles.find(r => r.code === p.role)?.side === 'evil').map(p => p.name).join('、')}
+                        </p>
+                      )}
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <button
+          onClick={nextPlayerReveal}
+          className={`w-full max-w-sm py-3 mt-6 bg-green-500 text-white rounded-xl shadow-lg transition-all hover:bg-green-600 ${revealedPlayers.size === 0 ? 'opacity-50 cursor-not-allowed' : ''}`}
+          disabled={revealedPlayers.size === 0}
+        >
+          {currentPlayerIndex === players.length - 1 ? '開始遊戲' : `下一位玩家 (${currentPlayerIndex + 1}/${players.length})`}
+        </button>
+      </div>
+    );
+  };
+
+  const WhosTheSpyGameplay = () => {
+    const alivePlayers = players.filter(p => p.alive);
+    const currentPlayer = alivePlayers[whosTheSpyState.turn];
+
+    const handleVote = () => {
+      const radios = document.querySelectorAll('input[name="vote"]:checked');
+      if (radios.length === 0) {
+        showMessageWithTimeout('請選擇一位玩家投票！');
+        return;
+      }
+      processWhosTheSpyVote([parseInt(radios[0].value)]);
+    };
+
+    return (
+      <div className="p-4 space-y-6">
+        <h2 className="text-2xl font-bold text-gray-800 mb-4">
+          <Ghost size={24} className="inline-block mr-2" />
+          誰是臥底 - 第 {whosTheSpyState.round} 回合
+        </h2>
+
+        <div className="bg-white p-4 rounded-xl shadow-md">
+          <h3 className="text-lg font-bold mb-2">存活玩家</h3>
+          <div className="flex flex-wrap gap-2">
+            {alivePlayers.map(p => (
+              <span key={p.id} className="bg-gray-200 text-gray-800 text-sm font-semibold px-2 py-1 rounded-full">
+                {p.name}
+              </span>
+            ))}
+          </div>
+        </div>
+
+        {whosTheSpyState.phase === 'describing' && (
+          <div className="bg-white p-4 rounded-xl shadow-md text-center">
+            <h3 className="text-lg font-bold mb-2">發言時間</h3>
+            <p className="text-gray-600 mb-4">輪到 <span className="text-indigo-600 font-bold">{currentPlayer.name}</span> 描述。</p>
+            <button onClick={nextWhosTheSpyTurn} className="w-full py-3 bg-green-500 text-white rounded-xl shadow-lg hover:bg-green-600">
+              {whosTheSpyState.turn === alivePlayers.length - 1 ? '發言結束，開始投票' : '下一位玩家'}
+            </button>
+          </div>
+        )}
+
+        {whosTheSpyState.phase === 'voting' && (
+          <div className="bg-white p-4 rounded-xl shadow-md">
+            <h3 className="text-lg font-bold mb-2">投票淘汰</h3>
+            <p className="text-gray-600 mb-4">請所有玩家投票選出你懷疑的對象。</p>
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+              {alivePlayers.map(player => (
+                <div key={player.id} className="flex items-center space-x-2 p-2 bg-gray-100 rounded-lg">
+                  <input type="radio" id={`vote-${player.id}`} name="vote" value={player.id} className="h-4 w-4 text-blue-600 focus:ring-blue-500" />
+                  <label htmlFor={`vote-${player.id}`} className="text-lg font-medium text-gray-800">{player.name}</label>
+                </div>
+              ))}
+            </div>
+            <button onClick={handleVote} className="w-full py-3 mt-4 bg-red-500 text-white rounded-xl shadow-lg hover:bg-red-600">
+              確認投票
+            </button>
+          </div>
+        )}
+
+        <button onClick={resetGame} className="w-full py-3 bg-gray-200 text-gray-800 rounded-xl shadow-md transition-all hover:bg-gray-300 mt-2">
+          返回首頁
+        </button>
+      </div>
+    );
+  };
+
+  const AvalonGameplay = () => {
+    const isGoodWins = avalonState.questResults.filter(r => r === 'success').length === 3;
+    const isEvilWins = avalonState.questResults.filter(r => r === 'fail').length === 3 || avalonState.failedVotes >= 5;
+    const questSize = playerCount > 0 ? gameData.avalon.questSizes[playerCount][avalonState.currentQuest - 1] : 0;
+    const currentLeader = players.find(p => p.id === avalonState.leader);
+
+    const getOutcomeColor = (outcome) => {
+      if (outcome === 'success') return 'bg-green-500';
+      if (outcome === 'fail') return 'bg-red-500';
+      return 'bg-gray-400';
+    };
+
+    return (
+      <div className="p-4 space-y-6">
+        <div className="flex items-center justify-between mb-4">
+          <button onClick={resetGame} className="text-gray-600 hover:text-gray-800"><ChevronLeft size={32} /></button>
+          <h2 className="text-2xl font-bold text-gray-800">阿瓦隆</h2>
+          <div className="w-8"></div>
+        </div>
+
+        {/* Scoreboard */}
+        <div className="bg-white p-4 rounded-xl shadow-md">
+          <h3 className="text-lg font-bold mb-2">任務進度</h3>
+          <div className="flex justify-around items-center space-x-2">
+            {[0, 1, 2, 3, 4].map(qIndex => (
+              <button
+                key={qIndex}
+                onClick={() => avalonState.questTeams && avalonState.questTeams[qIndex] && showQuestTeamModal(qIndex)}
+                className={`relative w-12 h-12 rounded-full flex flex-col items-center justify-center text-white font-bold transition-colors ${getOutcomeColor(avalonState.questResults[qIndex])}`}
+              >
+                {avalonState.questResults[qIndex] ? (
+                  <>
+                    <span className="text-xl">{gameData.avalon.questSizes[playerCount][qIndex]}</span>
+                    <span className="text-xs absolute bottom-1">{avalonState.questResults[qIndex] === 'success' ? '成功' : '失敗'}</span>
+                  </>
+                ) : (
+                  <span className="text-xl">{gameData.avalon.questSizes[playerCount][qIndex]}</span>
+                )}
+              </button>
+            ))}
+          </div>
+          <p className="mt-4 text-center font-semibold text-gray-700">團隊投票失敗: {avalonState.failedVotes} / 5</p>
+        </div>
+        
+        {/* Quest Team Modal */}
+        {avalonState.showQuestTeamModal && (
+          <div className="fixed inset-0 bg-gray-600 bg-opacity-75 flex items-center justify-center z-50 p-4">
+            <div className="bg-white p-6 rounded-2xl shadow-xl w-full max-w-sm text-center">
+              <h3 className="text-2xl font-bold mb-4">
+                第 {avalonState.selectedQuestIndex + 1} 次任務團隊
+              </h3>
+              <ul className="space-y-2 text-lg">
+                {(avalonState.questTeams || []).map(questTeam => questTeam.members).flat().filter((value, index, self) => self.indexOf(value) === index).map(playerId => (
+                  <li key={playerId} className="p-2 bg-gray-100 rounded-lg">{players.find(p => p.id === playerId)?.name}</li>
+                ))}
+              </ul>
+              <button
+                onClick={hideQuestTeamModal}
+                className="w-full mt-6 py-3 bg-indigo-500 text-white rounded-xl hover:bg-indigo-600"
+              >
+                關閉
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Game State */}
+        {isGoodWins && avalonState.currentVotePhase === 'assassination' && (
+          <div className="bg-green-100 text-green-700 p-4 rounded-xl text-center font-bold">
+            正義方獲勝！任務成功次數達到三次。刺客請選擇要刺殺的對象。
+          </div>
+        )}
+        {isEvilWins && (
+          <div className="bg-red-100 text-red-700 p-4 rounded-xl text-center font-bold">
+            邪惡方獲勝！任務失敗次數過多。
+          </div>
+        )}
+        {avalonState.currentVotePhase === 'assassination' && (
+          <div className="bg-white p-4 rounded-xl shadow-md">
+            <h3 className="text-lg font-bold mb-2 text-red-600 flex items-center">
+              <Target size={20} className="mr-2" />
+              刺客請選擇梅林
+            </h3>
+            <div className="grid grid-cols-3 gap-4">
+              {players.map(p => (
+                <button
+                  key={p.id}
+                  onClick={() => assassinatePlayer(p.id)}
+                  className={`p-2 rounded-lg text-center cursor-pointer border-2 transition-all hover:bg-red-200 ${avalonState.assassinationTarget === p.id ? 'bg-red-400 text-white border-red-500' : 'bg-gray-100 border-gray-300'}`}
+                >
+                  <User size={32} className="mx-auto text-gray-600" />
+                  <p className="font-semibold text-sm mt-1">{p.name}</p>
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {isGoodWins || isEvilWins ? (
+          <button onClick={resetGame} className="w-full py-3 bg-gray-200 text-gray-800 rounded-xl shadow-md mt-4">
+            返回首頁
+          </button>
+        ) : (
+          <>
+            {/* Team Selection */}
+            {avalonState.currentVotePhase === 'team-selection' && (
+              <div className="bg-white p-4 rounded-xl shadow-md text-center">
+                <p className="text-xl font-bold mb-2">
+                  <span className="text-yellow-600 mr-2">領袖:</span> {currentLeader?.name}
+                </p>
+                <p className="text-lg font-bold text-gray-700">
+                  <span className="text-blue-600 mr-2">任務人數:</span> {avalonState.team.length} / {questSize}
+                </p>
+                <div className="grid grid-cols-3 gap-4 my-4">
+                  {players.map(p => (
+                    <button
+                      key={p.id}
+                      onClick={() => togglePlayerSelection(p.id)}
+                      className={`p-2 rounded-lg text-center cursor-pointer border-2 transition-all ${avalonState.leader === p.id ? 'bg-yellow-400 border-yellow-500' : (avalonState.team.includes(p.id) ? 'bg-blue-400 text-white border-blue-500' : 'bg-gray-100 border-gray-300')}`}
+                    >
+                      {avalonState.leader === p.id && <Crown size={20} className="mx-auto text-yellow-600" />}
+                      <User size={32} className="mx-auto text-gray-600" />
+                      <p className="font-semibold text-sm mt-1">{p.name}</p>
+                    </button>
+                  ))}
+                </div>
+                <button
+                  onClick={startAvalonTeamVote}
+                  disabled={avalonState.team.length !== questSize}
+                  className={`w-full py-3 mt-4 rounded-xl shadow-lg transition-all ${avalonState.team.length !== questSize ? 'bg-gray-400 cursor-not-allowed' : 'bg-green-500 text-white hover:bg-green-600'}`}
+                >
+                  發起投票
+                </button>
+              </div>
+            )}
+            
+            {/* Team Voting */}
+            {avalonState.currentVotePhase === 'team-voting' && (
+              <div className="bg-white p-4 rounded-xl shadow-md text-center">
+                <h3 className="text-lg font-bold mb-2">團隊投票</h3>
+                <p className="text-gray-500 text-sm mb-4">
+                  已投票人數: {avalonState.voteTally.approve + avalonState.voteTally.reject} / {playerCount}
+                </p>
+                <div className="flex justify-center space-x-4">
+                  <button onClick={() => recordAvalonTeamVote('approve')} className="p-4 rounded-xl bg-green-500 text-white hover:bg-green-600 transition-colors">
+                    <Check size={32} />
+                    <p className="text-sm">通過</p>
+                  </button>
+                  <button onClick={() => recordAvalonTeamVote('reject')} className="p-4 rounded-xl bg-red-500 text-white hover:bg-red-600 transition-colors">
+                    <X size={32} />
+                    <p className="text-sm">不通過</p>
+                  </button>
+                </div>
+              </div>
+            )}
+            
+            {/* Mission Voting */}
+            {avalonState.currentVotePhase === 'mission-voting' && (
+                <div className="bg-white p-4 rounded-xl shadow-md text-center">
+                    <h3 className="text-lg font-bold mb-2">任務投票</h3>
+                    <p className="text-gray-500 text-sm mb-4">
+                      請參與任務的玩家選擇「成功」或「失敗」。
+                    </p>
+                    <p className="font-bold text-gray-700">
+                        已投票: {avalonState.missionVoteTally.success + avalonState.missionVoteTally.fail} / {avalonState.team.length}
+                    </p>
+                    <div className="flex justify-center space-x-4 mt-4">
+                        <button onClick={() => recordAvalonMissionVote('success')} className="p-4 rounded-xl bg-green-500 text-white hover:bg-green-600 transition-colors">
+                            <Smile size={32} />
+                            <p className="text-sm">成功</p>
+                        </button>
+                        <button onClick={() => recordAvalonMissionVote('fail')} className="p-4 rounded-xl bg-red-500 text-white hover:bg-red-600 transition-colors">
+                            <Frown size={32} />
+                            <p className="text-sm">失敗</p>
+                        </button>
+                    </div>
+                </div>
+            )}
+
+            {/* Mission Result */}
+            {avalonState.currentVotePhase === 'mission-result' && (
+                <div className="bg-white p-4 rounded-xl shadow-md text-center">
+                    <h3 className="text-lg font-bold mb-2">任務結果</h3>
+                    <div className="flex justify-center space-x-4 mb-4">
+                        <div className="flex items-center text-green-600 font-bold">
+                            <Check size={24} className="mr-1" />成功: {avalonState.missionVoteTally.success}
+                        </div>
+                        <div className="flex items-center text-red-600 font-bold">
+                            <X size={24} className="mr-1" />失敗: {avalonState.missionVoteTally.fail}
+                        </div>
+                    </div>
+                    <button onClick={advanceAvalonQuest} className="w-full py-3 mt-4 bg-green-500 text-white rounded-xl shadow-lg hover:bg-green-600">
+                      進入下一回合
+                    </button>
+                </div>
+            )}
+          </>
+        )}
+      </div>
+    );
+  };
+
+  const WerewolfGameplay = () => {
+    const alivePlayers = players.filter(p => p.alive);
+    const hasSeer = players.some(p => p.role === 'seer');
+    const hasWitch = players.some(p => p.role === 'witch');
+
+    const handleVote = () => {
+      const radios = document.querySelectorAll('input[name="vote"]:checked');
+      if (radios.length === 0) {
+        showMessageWithTimeout('請選擇一位玩家投票！');
+        return;
+      }
+      processWerewolfVote([parseInt(radios[0].value)]);
+    };
+
+    return (
+        <div className="p-4 space-y-6">
+            <h2 className="text-2xl font-bold text-gray-800 mb-4">
+                <Axe size={24} className="inline-block mr-2" />
+                狼人殺 - 第 {werewolfState.day} 天
+            </h2>
+            
+            {werewolfState.phase === 'night' && (
+                <div className="bg-white p-4 rounded-xl shadow-md text-center">
+                    <h3 className="text-lg font-bold mb-2">夜晚行動</h3>
+                    <p className="text-gray-600">天黑請閉眼，狼人請睜眼，並選擇要殺害的玩家。</p>
+                    <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mt-4">
+                        {alivePlayers.filter(p => p.role !== 'werewolf').map(p => (
+                            <button key={p.id} onClick={() => handleWerewolfAction(p.id, 'werewolf')} className="p-2 rounded-lg bg-gray-100 border border-gray-300 text-gray-800 hover:bg-red-200">
+                                <User size={32} className="mx-auto" />
+                                <p className="font-semibold text-sm mt-1">{p.name}</p>
+                            </button>
+                        ))}
+                    </div>
+                </div>
+            )}
+            
+            {werewolfState.phase === 'night-seer' && hasSeer && (
+              <div className="bg-white p-4 rounded-xl shadow-md text-center">
+                <h3 className="text-lg font-bold mb-2">預言家行動</h3>
+                <p className="text-gray-600">天黑請閉眼，預言家請睜眼，並選擇要查驗的玩家。</p>
+                {werewolfState.seerResult && (
+                    <div className="p-2 mt-4 bg-blue-100 rounded-lg text-blue-700 font-semibold">
+                        {werewolfState.seerResult}
+                    </div>
+                )}
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mt-4">
+                    {alivePlayers.map(p => (
+                        <button key={p.id} onClick={() => handleWerewolfAction(p.id, 'seer')} className="p-2 rounded-lg bg-gray-100 border border-gray-300 text-gray-800 hover:bg-blue-200">
+                            <User size={32} className="mx-auto" />
+                            <p className="font-semibold text-sm mt-1">{p.name}</p>
+                        </button>
+                    ))}
+                </div>
+              </div>
+            )}
+
+            {werewolfState.phase === 'night-witch' && hasWitch && (
+              <div className="bg-white p-4 rounded-xl shadow-md text-center">
+                <h3 className="text-lg font-bold mb-2">女巫行動</h3>
+                <p className="text-gray-600">天黑請閉眼，女巫請睜眼。狼人選擇了 <span className="text-red-600 font-bold">{players.find(p => p.id === werewolfState.werewolfTargetId)?.name}</span>。</p>
+                <div className="flex flex-col space-y-4 mt-4">
+                  {werewolfState.witchHasAntidote && (
+                    <button onClick={() => handleWerewolfAction(werewolfState.werewolfTargetId, 'witch-antidote')} className="w-full py-3 bg-blue-500 text-white rounded-xl shadow-lg hover:bg-blue-600">
+                      <Shield size={20} className="inline-block mr-2" />
+                      使用解藥
+                    </button>
+                  )}
+                  {werewolfState.witchHasPoison && (
+                    <div className="w-full">
+                      <p className="text-gray-500 mb-2">或選擇毒殺對象:</p>
+                      <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+                        {alivePlayers.map(p => (
+                          <button key={p.id} onClick={() => handleWerewolfAction(p.id, 'witch-poison')} className="p-2 rounded-lg bg-gray-100 border border-gray-300 text-gray-800 hover:bg-purple-200">
+                            <Skull size={20} className="inline-block mr-2 text-purple-600"/>
+                            {p.name}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                  <button onClick={() => setWerewolfState(prev => ({ ...prev, phase: 'night-end' }))} className="w-full py-3 bg-gray-200 text-gray-800 rounded-xl shadow-md hover:bg-gray-300">
+                    不使用藥劑
+                  </button>
+                </div>
+              </div>
+            )}
+            
+            {werewolfState.phase === 'night-end' && (
+                <div className="bg-white p-4 rounded-xl shadow-md text-center">
+                    <h3 className="text-lg font-bold mb-2">夜晚結束</h3>
+                    <p className="text-gray-600">天亮了，請主持人點擊按鈕結束夜晚。</p>
+                    <button onClick={endNight} className="w-full py-3 mt-4 bg-green-500 text-white rounded-xl shadow-lg hover:bg-green-600">
+                        天亮了，揭曉結果
+                    </button>
+                </div>
+            )}
+
+            {werewolfState.phase === 'day-announcement' && (
+                <div className="bg-white p-4 rounded-xl shadow-md text-center">
+                    <h3 className="text-lg font-bold mb-2">白天宣告</h3>
+                    {werewolfState.killedList.length > 0 ? (
+                        <>
+                            <p className="text-gray-600 font-bold">昨晚出局的玩家有：</p>
+                            <ul className="mt-2 space-y-1">
+                                {werewolfState.killedList.map(playerId => (
+                                    <li key={playerId} className="text-red-600 text-lg font-bold">
+                                        {players.find(p => p.id === playerId)?.name}
+                                    </li>
+                                ))}
+                            </ul>
+                            <button onClick={startDayDiscussion} className="w-full py-3 mt-4 bg-indigo-500 text-white rounded-xl shadow-lg hover:bg-indigo-600">
+                                開始白天討論
+                            </button>
+                        </>
+                    ) : (
+                        <>
+                            <p className="text-gray-600 font-bold">昨晚是個平安夜，沒有人出局。</p>
+                            <button onClick={startDayDiscussion} className="w-full py-3 mt-4 bg-indigo-500 text-white rounded-xl shadow-lg hover:bg-indigo-600">
+                                開始白天討論
+                            </button>
+                        </>
+                    )}
+                </div>
+            )}
+
+            {werewolfState.phase === 'day-discussion' && (
+              <div className="bg-white p-4 rounded-xl shadow-md text-center">
+                <h3 className="text-lg font-bold mb-2">白天討論階段</h3>
+                <p className="text-gray-600 mb-4">請所有玩家發言，討論誰是狼人。</p>
+                <button onClick={startDayVoting} className="w-full py-3 mt-4 bg-red-500 text-white rounded-xl shadow-lg hover:bg-red-600">
+                  開始放逐投票
+                </button>
+              </div>
+            )}
+            
+            {werewolfState.phase === 'day-voting' && (
+                <div className="bg-white p-4 rounded-xl shadow-md text-center">
+                    <h3 className="text-lg font-bold mb-2">放逐投票</h3>
+                    <p className="text-gray-600 mb-4">請所有存活玩家投票選出你懷疑的對象。</p>
+                    <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                        {alivePlayers.map(p => (
+                            <div key={p.id} className="flex items-center space-x-2 p-2 bg-gray-100 rounded-lg">
+                                <input type="radio" id={`vote-${p.id}`} name="vote" value={p.id} className="h-4 w-4 text-blue-600 focus:ring-blue-500" />
+                                <label htmlFor={`vote-${p.id}`} className="text-lg font-medium text-gray-800">{p.name}</label>
+                            </div>
+                        ))}
+                    </div>
+                    <button onClick={handleVote} className="w-full py-3 mt-4 bg-red-500 text-white rounded-xl shadow-lg hover:bg-red-600">
+                        確認投票
+                    </button>
+                </div>
+            )}
+            <button onClick={resetGame} className="w-full py-3 bg-gray-200 text-gray-800 rounded-xl shadow-md transition-all hover:bg-gray-300 mt-2">
+              返回首頁
+            </button>
+        </div>
+    );
+  };
+  
+  const History = () => (
+    <div className="p-4 space-y-6">
+      <div className="flex items-center justify-between">
+        <button onClick={resetGame} className="text-gray-600 hover:text-gray-800"><ChevronLeft size={32} /></button>
+        <h2 className="text-2xl font-bold text-gray-800">遊戲紀錄</h2>
+        <div className="w-8"></div>
+      </div>
+      {gameHistory.length === 0 ? (
+        <p className="text-center text-gray-500 mt-8">目前沒有遊戲紀錄。</p>
+      ) : (
+        gameHistory.map((entry, index) => (
+          <div key={index} className="bg-white p-6 rounded-2xl shadow-md space-y-2">
+            <div className="flex items-center justify-between font-bold text-gray-800">
+              <span>{entry.gameMode}</span>
+              <span>{entry.timestamp}</span>
+            </div>
+            <ul className="text-sm text-gray-600 space-y-1">
+              {entry.players.map((p, i) => (
+                <li key={i}>{p.name}: {p.role}</li>
+              ))}
+            </ul>
+            <p className="text-right text-sm font-bold mt-2">結果: {entry.result}</p>
+          </div>
+        ))
+      )}
+    </div>
+  );
+  
+  const ResultScreen = () => {
+      const getStatusColor = (isAlive) => isAlive ? 'text-green-600' : 'text-red-600';
+      const getStatusText = (isAlive) => isAlive ? '存活' : '已出局';
+      const getStatusIcon = (isAlive) => isAlive ? <Heart size={20} className="inline-block mr-1"/> : <Skull size={20} className="inline-block mr-1"/>;
+      const getRole = (roleCode) => getPlayerRoleInfo(roleCode);
+      const gameTitle = gameData[gameMode]?.name;
+      
+      return (
+          <div className="p-4 space-y-6 text-center">
+              <h2 className="text-3xl font-bold text-gray-800 flex items-center justify-center">
+                  <Trophy size={32} className="mr-2"/>
+                  遊戲結算
+              </h2>
+              <h3 className="text-xl font-bold text-gray-700">{gameTitle}</h3>
+              <div className="bg-white p-6 rounded-2xl shadow-xl">
+                  <h4 className="text-lg font-bold mb-4">玩家最終狀態</h4>
+                  <ul className="space-y-4 text-left">
+                      {players.map(p => (
+                          <li key={p.id} className="flex items-center justify-between p-3 rounded-lg border-2" style={{
+                              borderColor: p.alive ? '#4ade80' : '#f87171',
+                              backgroundColor: p.alive ? '#dcfce7' : '#fee2e2'
+                          }}>
+                              <div className="flex flex-col">
+                                  <span className="text-lg font-bold text-gray-800">{p.name}</span>
+                                  <span className="text-sm text-gray-600">
+                                      身分: <span className="font-semibold">{getRole(p.role)?.name}</span>
+                                      {gameMode === 'whosTheSpy' && p.word && (
+                                        <span className="ml-2">({p.word})</span>
+                                      )}
+                                  </span>
+                              </div>
+                              <div className={`flex items-center text-sm font-bold ${getStatusColor(p.alive)}`}>
+                                  {getStatusIcon(p.alive)}
+                                  {getStatusText(p.alive)}
+                              </div>
+                          </li>
+                      ))}
+                  </ul>
+              </div>
+              <button onClick={resetGame} className="w-full py-3 bg-indigo-500 text-white rounded-xl shadow-lg hover:bg-indigo-600 transition">
+                  返回主選單
+              </button>
+          </div>
+      );
+  };
+
+
+  const resetGame = () => {
+    setCurrentPage('home');
+    setGameMode(null);
+    setPlayers([]);
+    setRoleCounts({});
+    setPlayerCount(0);
+    setCurrentPlayerIndex(0);
+    setRevealedPlayers(new Set());
+    setAvalonState({
+      leader: null,
+      currentQuest: 0,
+      team: [],
+      questResults: [],
+      voteCount: 0,
+      currentVotePhase: 'team-selection',
+      questVoteOutcome: null,
+      missionVoteTally: { success: 0, fail: 0 },
+      assassinationTarget: null,
+      questTeams: [], // Reset questTeams to an empty array
+    });
+    setWhosTheSpyState({ round: 1, turn: 0, descriptions: {}, phase: 'describing' });
+    setWerewolfState({ day: 1, phase: 'night', killedPlayerId: null, poisonedPlayerId: null, savedPlayerId: null, werewolfTargetId: null, seerTargetId: null, seerResult: null, guardianTargetId: null, killedList: [], playersToVote: [] });
+  };
+  
+  const fetchNewWords = async () => {
+    setIsFetchingWords(true);
+    showMessageWithTimeout('正在取得新詞語...');
+    const prompt = "Generate 5 pairs of related words suitable for the 'Who's the Spy' game in Traditional Chinese. Each pair should consist of two words that are similar but not identical. The output should be a JSON array of arrays, like [['word1', 'word2'], ['word3', 'word4'], ...]. The words should be common nouns.";
+    const apiKey = "";
+    const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key=${apiKey}`;
+
+    const payload = {
+        contents: [{ parts: [{ text: prompt }] }],
+        generationConfig: {
+            responseMimeType: "application/json",
+            responseSchema: {
+                type: "ARRAY",
+                items: {
+                    type: "ARRAY",
+                    items: { "type": "STRING" },
+                    minItems: 2,
+                    maxItems: 2
+                },
+                minItems: 5,
+                maxItems: 5
+            }
+        }
+    };
+
+    try {
+        const response = await fetch(apiUrl, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+        const result = await response.json();
+        const jsonText = result?.candidates?.[0]?.content?.parts?.[0]?.text;
+        const newWords = JSON.parse(jsonText);
+
+        if (Array.isArray(newWords) && newWords.length > 0) {
+            gameData.whosTheSpy.words = newWords;
+            showMessageWithTimeout('成功取得新詞語！');
+        } else {
+            showMessageWithTimeout('取得詞語失敗，請稍後再試。');
+        }
+    } catch (error) {
+        console.error("Failed to fetch new words:", error);
+        showMessageWithTimeout('連線錯誤，無法取得新詞語。請檢查網路連線。');
+    } finally {
+        setIsFetchingWords(false);
+    }
+  };
+
+
+  return (
+    <div className="font-sans antialiased bg-gray-100 min-h-screen flex items-center justify-center p-4">
+      <div className="bg-white rounded-3xl shadow-2xl p-6 md:p-10 w-full max-w-lg text-center transform transition-all duration-300">
+        <header className="mb-8">
+          <h1 className="text-4xl md:text-5xl font-extrabold text-indigo-600">
+            <Gamepad2 size={48} className="inline-block mr-2" />
+            桌遊助手
+          </h1>
+          <p className="mt-2 text-gray-500 text-lg">單機版</p>
+        </header>
+        <div className="relative">
+          {message && (
+            <div className="absolute top-0 left-1/2 -translate-x-1/2 z-50 p-3 bg-red-500 text-white rounded-lg shadow-xl text-center transition-all duration-300">
+              {message}
+            </div>
+          )}
+        </div>
+        <div className="animate-fade-in">
+          {currentPage === 'home' && <Home />}
+          {currentPage === 'setup' && <Setup />}
+          {currentPage === 'role-reveal' && <RoleReveal />}
+          {currentPage === 'whos-the-spy-gameplay' && <WhosTheSpyGameplay />}
+          {currentPage === 'avalon-gameplay' && <AvalonGameplay />}
+          {currentPage === 'werewolf-gameplay' && <WerewolfGameplay />}
+          {currentPage === 'history' && <History />}
+          {currentPage === 'result-screen' && <ResultScreen />}
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export default App;
